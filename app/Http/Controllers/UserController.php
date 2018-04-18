@@ -17,6 +17,7 @@ use App\Helpers\JwtAuth;
 class UserController extends Controller
 {
     public function register(Request $request){
+
       $json = $request->json;
       $params = json_decode($json);
 
@@ -35,13 +36,24 @@ class UserController extends Controller
         $user->role = $role;
         $pwd = hash('sha256', $password);
         $user->password = $pwd;
-        $user->save();
 
-        $data = array(
-          'status' => 'success',
-          'code'  => 200,
-          'message' => 'Usuario Creado'
-        );
+        $isset_user = User::where('email', '=', $email)->get();
+        if(count($isset_user) == 0){
+          $user->save();
+          $data = array(
+            'status' => 'success',
+            'code'  => 200,
+            'message' => 'Usuario Creado'
+          );
+        }
+        else{
+          $data = array(
+            'status' => 'error',
+            'code'  => 400,
+            'message' => 'Usuario Duplicado'
+          );
+        }
+
       }
       else {
         $data = array(
@@ -53,10 +65,10 @@ class UserController extends Controller
       return response()->json($data, 200);
     }
     public function login(Request $request){
+
       $jwt = new JwtAuth();
 
       //RECIBIR post
-
       $json = $request->input('json', null);
       $params = json_decode($json);
 
