@@ -11,9 +11,10 @@ class CarController extends Controller
   private $jwt;
   public function __construct()
   {
+    // $this->middleware('cors');
+    //$this->middleware('jwt.auth');
     $this->middleware('jwt.auth');
     $this->jwt = new JwtAuth();
-    //$this->middleware('jwt.auth', ['except' => ['index','show']]);
   }
   public function index(){
     $cars = Car::all()->load('user');
@@ -23,18 +24,29 @@ class CarController extends Controller
     ), 200);
   }
   public function show($id){
-    $car = Car::find($id)->load('user');
+    $car = Car::find($id);
+    if(is_object($car)){
+      $car = Car::find($id)->load('user');
+      return response()->json(array(
+          'car' => $car,
+          'status' => 'success'
+      ), 200);
+    }
     return response()->json(array(
-        'car' => $car,
-        'status' => 'success'
+        'status' => 'error',
+        'message' => 'El coche no existe'
     ), 200);
   }
 
-  public function update($id, Request $request){
+  public function update(Request $request, $id){
+
+      $user = $this->jwt->user($request->header('Authorization'));
     $json = $request->input('json', null);
     $params = json_decode($json);
     $params_array = json_decode($json, true);
 
+    var_dump($request);
+    die();
     $validate = \Validator::make($params_array, [
       'title' => 'required|min:5',
       'description' => 'required',
@@ -44,7 +56,10 @@ class CarController extends Controller
     if($validate->fails()){
       return response()->json($validate->errors(), 400);
     }
-
+    unset($params_array['id']);
+    unset($params_array['user_id']);
+    unset($params_array['created_at']);
+    unset($params_array['user']);
     $car = Car::where('id', $id)->update($params_array);
 
     $data = array(
@@ -81,7 +96,11 @@ class CarController extends Controller
       'status' => 'required'
     ]);
     if($validate->fails()){
-      return response()->json($validate->errors(), 400);
+      $data = array(
+        'status' => 'error',
+        'message' => $validate->errors()
+      );
+      return response()->json($data, 200);
     }
 
     $car = new Car();
@@ -94,6 +113,7 @@ class CarController extends Controller
 
     $data = array(
       'car' => $car,
+      'message' => 'Automovil Creado Correctamente',
       'status' => 'success',
       'code' => 200
     );
